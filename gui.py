@@ -220,7 +220,7 @@ class App:
         else:
             base_path = os.path.dirname(os.path.abspath(__file__))
         mp=os.path.join(base_path,"main.py")
-        cmd=[sys.executable,mp,"--output",out,"--duration",dur_m,"--lang",lang,"--gender","male"]
+        cmd=[sys.executable,"-u",mp,"--output",out,"--duration",dur_m,"--lang",lang,"--gender","male"]
 
         if mode=="topic":
             cmd+=["--topic",self.topic_var.get().strip()]

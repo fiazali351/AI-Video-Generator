@@ -110,7 +110,14 @@ class VideoAssembler:
                     clip = vfx_loop(clip, duration=duration)
                 return clip.subclip(0, duration)
             elif suf in (".jpg",".jpeg",".png"):
-                clip = ImageClip(str(path)).set_duration(duration)
+                # Ensure RGB — convert grayscale to RGB
+                try:
+                    from PIL import Image as PILImage
+                    import numpy as np
+                    img = PILImage.open(str(path)).convert("RGB")
+                    clip = ImageClip(np.array(img)).set_duration(duration)
+                except:
+                    clip = ImageClip(str(path)).set_duration(duration)
                 return self._fill(clip)
         except Exception as e:
             print(f"\n   Could not load {path.name}: {e}")
