@@ -3,6 +3,7 @@ import argparse
 import shutil
 import sys
 import time
+import os
 from pathlib import Path
 
 if sys.version_info < (3, 8):
@@ -43,6 +44,25 @@ def main():
     except ImportError as exc:
         sys.exit(f"Import error: {exc}")
 
+    # Check API keys
+    if "YOUR_GROQ_KEY" in config.OPENAI_API_KEY or "YOUR_SERPER_KEY" in config.SERPER_API_KEY:
+        print("API keys not configured!")
+        try:
+            # Get correct path for exe
+            if getattr(sys, 'frozen', False):
+                base_path = os.path.dirname(sys.executable)
+            else:
+                base_path = os.path.dirname(os.path.abspath(__file__))
+            
+            os.chdir(base_path)
+            from setup_keys import run_setup
+            run_setup()
+            import importlib
+            importlib.reload(config)
+        except Exception as e:
+            print(f"Setup error: {e}", flush=True)
+            sys.exit(1)
+
     if args.list_voices:
         print("Available: Male / Female in English, Urdu, Hindi, Arabic")
         return
@@ -51,11 +71,23 @@ def main():
         print("Please provide --topic or --script")
         sys.exit(1)
 
-    temp_dir = Path("temp")
+    # Use exe/script directory for output
+    import sys
+    if getattr(sys, 'frozen', False):
+        base_path = Path(os.path.dirname(sys.executable))
+    else:
+        base_path = Path(os.path.dirname(os.path.abspath(__file__)))
+
+    temp_dir = base_path / "temp"
     temp_dir.mkdir(exist_ok=True)
-    output_dir = Path("output")
+    output_dir = base_path / "output"
     output_dir.mkdir(exist_ok=True)
-    output_path = output_dir / args.output
+    # Simple clean output filename
+    import re
+    clean_output = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', args.output)
+    if not clean_output.endswith('.mp4'):
+        clean_output += '.mp4'
+    output_path = output_dir / clean_output
     start_time = time.time()
 
     # Convert duration to seconds
@@ -69,17 +101,17 @@ def main():
 
         if args.topic:
             dur_msg = f"{args.duration} min" if args.duration > 0 else "auto"
-            print(f"   Topic   : \"{args.topic}\"")
-            print(f"   Duration: {dur_msg}")
+            print(f"   Topic   : \"{args.topic}\"", flush=True)
+            print(f"   Duration: {dur_msg}", flush=True)
             script = script_gen.generate(args.topic, target_minutes=args.duration)
         else:
-            print(f"   Loading: {args.script}")
+            print(f"   Loading: {args.script}", flush=True)
             script = script_gen.load_from_file(args.script, target_minutes=args.duration)
 
         n_sections = len(script["sections"])
         title = script["title"].encode('ascii','ignore').decode('ascii')
-        print(f"   Title   : {title}")
-        print(f"   Sections: {n_sections}")
+        print(f"   Title   : {title}", flush=True)
+        print(f"   Sections: {n_sections}", flush=True)
 
         if args.save_script:
             script_path = str(output_path).replace(".mp4", "_script.json")
@@ -87,11 +119,11 @@ def main():
 
         print()
         print("-" * 54)
-        print(f"STEP 2 - VOICEOVER ({args.lang} / {args.gender})")
+        print(f"STEP 2 - VOICEOVER ({args.lang} / {args.gender}, flush=True)", flush=True)
         print("-" * 54)
         voice_gen = VoiceGenerator(lang=args.lang, gender=args.gender)
         audio_files = voice_gen.generate_sections(script["sections"], temp_dir)
-        print(f"   {len(audio_files)} audio clips generated")
+        print(f"   {len(audio_files)} audio clips generated", flush=True)
 
         print()
         print("-" * 54)
@@ -103,7 +135,7 @@ def main():
             temp_dir,
             duration_seconds=duration_seconds  # ✅ pass karo
         )
-        print(f"   {len(media_files)} media files downloaded")
+        print(f"   {len(media_files)} media files downloaded", flush=True)
 
         print()
         print("-" * 54)
@@ -119,8 +151,8 @@ def main():
         print()
         print("=" * 54)
         print("   VIDEO CREATED!")
-        print(f"   Output : {str(output_path)}")
-        print(f"   Time   : {mins}m {secs}s")
+        print(f"   Output : {str(output_path)}", flush=True)
+        print(f"   Time   : {mins}m {secs}s", flush=True)
         print("=" * 54)
         print()
         print("Tips:")
@@ -130,7 +162,7 @@ def main():
         print("\nInterrupted.")
         sys.exit(0)
     except Exception as exc:
-        print(f"\nError: {exc}")
+        print(f"\nError: {exc}", flush=True)
         import traceback
         traceback.print_exc()
         sys.exit(1)
